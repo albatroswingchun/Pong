@@ -7,95 +7,79 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root{
-      --yellow:#ffd84d; /* fond */
-      --black:#000000;  /* paddles/ball/texte */
-      --aspect: calc(16/9);
+      --yellow:#ffd84d;
+      --black:#000;
     }
     *{box-sizing:border-box}
     html,body{
-      height:100%;
-      margin:0;
-      background:var(--yellow);
-      color:var(--black);
+      height:100%; margin:0; background:var(--yellow); color:var(--black);
       font-family:"Press Start 2P", system-ui, sans-serif;
     }
     .wrap{
-      min-height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
+      min-height:100%; display:flex; align-items:center; justify-content:center; padding:16px;
     }
-    /* Conteneur responsive qui garde 16:9, avec rendu pixelisé */
     .stage-wrap{
       position:relative;
       width:min(96vw, 96vh*16/9);
-      height:calc(min(96vw, 96vh*16/9) / (16/9));
+      height:calc(min(96vw, 96vh*16/9)/(16/9));
       background:var(--yellow);
       border:4px solid var(--black);
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      box-shadow: 0 8px 0 var(--black);
+      image-rendering:pixelated; image-rendering:crisp-edges;
+      box-shadow:0 8px 0 var(--black);
+      overflow:hidden;
     }
-    canvas{
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-    }
+    canvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
 
-    /* HUD */
     .hud{
-      position:absolute; left:0; top:0; right:0;
+      position:absolute; left:0; right:0; top:0;
       display:flex; justify-content:space-between; align-items:center;
-      padding:10px 14px; pointer-events:none; user-select:none;
+      padding:10px 14px; user-select:none;
       font-size:min(3.4vw,22px);
     }
     .logo{letter-spacing:1px}
-    .score{font-size:1.2em}
-
-    /* Menu */
-    .menu, .modal{
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    .score{font-size:1.6em; line-height:1}
+    .score.flash{animation:flash .18s ease-out}
+    @keyframes flash{
+      from{transform:scale(1.15)}
+      to{transform:scale(1)}
     }
+
+    .net{
+      position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
+      background-image:linear-gradient(var(--black) 50%, rgba(0,0,0,0) 50%);
+      background-size:6px 20px; opacity:.25; pointer-events:none;
+    }
+
+    .menu, .modal{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
     .card{
-      background:var(--yellow);
-      border:4px solid var(--black);
-      box-shadow: 0 8px 0 var(--black);
-      padding:24px;
-      text-align:center;
-      max-width:min(90%,520px);
+      background:var(--yellow); border:4px solid var(--black); box-shadow:0 8px 0 var(--black);
+      padding:24px; text-align:center; max-width:min(90%,520px);
     }
     .card h1{font-size:20px; margin:0 0 16px}
     .btn{
       display:inline-block; margin:8px 0 0; padding:12px 16px; border:4px solid var(--black);
       background:var(--yellow); color:var(--black); cursor:pointer; text-decoration:none;
-      box-shadow: 0 6px 0 var(--black); transition: transform .02s;
-      font-family:"Press Start 2P", system-ui, sans-serif; font-size:14px;
+      box-shadow:0 6px 0 var(--black); transition:transform .02s; font-size:14px;
+      font-family:"Press Start 2P", system-ui, sans-serif;
     }
-    .btn:active{ transform: translateY(3px); box-shadow: 0 3px 0 var(--black); }
+    .btn:active{ transform:translateY(3px); box-shadow:0 3px 0 var(--black); }
 
-    /* Modal victoire */
-    .modal-backdrop{
-      position:absolute; inset:0; background:rgba(0,0,0,0.15);
-      display:flex; align-items:center; justify-content:center;
-    }
+    .modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; }
     .modal h2{font-size:18px; margin:0 0 16px}
     .small{font-size:12px; opacity:.8}
-    /* Ligne médiane */
-    .net{
-      position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
-      background-image: linear-gradient(var(--black) 50%, rgba(0,0,0,0) 50%);
-      background-size: 6px 20px;
-      mix-blend-mode: multiply;
-      opacity:.25; pointer-events:none;
-    }
-    /* Aide contrôles */
+
     .help{
       position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
-      font-size:min(2.8vw,14px); opacity:.75; pointer-events:none;
-      text-align:center; line-height:1.5;
+      font-size:min(2.8vw,14px); opacity:.75; text-align:center; line-height:1.5; pointer-events:none;
     }
+
+    /* Mute toggle */
+    .sound{
+      position:absolute; right:10px; bottom:10px; font-size:min(2.8vw,14px);
+      border:4px solid var(--black); background:var(--yellow); box-shadow:0 6px 0 var(--black);
+      padding:8px 10px; cursor:pointer;
+    }
+    .sound:active{ transform:translateY(3px); box-shadow:0 3px 0 var(--black); }
   </style>
 </head>
 <body>
@@ -113,7 +97,7 @@
       <div class="menu" id="menu">
         <div class="card">
           <h1>Pong rétro</h1>
-          <p class="small">Z/Q/S/D pour Joueur&nbsp;1 — Flèches pour Joueur&nbsp;2</p>
+          <p class="small">J1: Z/S · J2: ↑/↓</p>
           <button class="btn" id="play5">Jouer en 5 points</button>
         </div>
       </div>
@@ -128,25 +112,23 @@
         </div>
       </div>
 
-      <div class="help">Z/S/ Q/D · ↑/↓ / ←/→ — 1er à 5 gagne</div>
+      <button class="sound" id="soundBtn">🔊 Son: ON</button>
+      <div class="help">1er à 5 gagne · Fond jaune, pixels noirs. Minimalisme assumé.</div>
     </div>
   </div>
 
   <script>
-    // =========================
-    // Paramètres de jeu
-    // =========================
+    // === Constantes ===
     const WIDTH = 800, HEIGHT = 450;
     const PADDLE_W = 12, PADDLE_H = 90;
-    const PADDLE_SPEED = 360; // px/s
+    const PADDLE_SPEED = 360;
     const PADDLE_X_MARGIN = 20;
-    const PADDLE_HORIZONTAL_RANGE = 60; // déplacement horizontal max vers l'intérieur
     const BALL_SIZE = 10;
-    const BALL_SPEED_START = 300; // px/s
+    const BALL_SPEED_START = 340;
     const BALL_SPEED_MAX = 650;
-    const BALL_ACCEL = 8; // accélération légère par seconde
     const POINTS_TO_WIN = 5;
 
+    // === DOM ===
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     const fxCanvas = document.getElementById('fx');
@@ -157,18 +139,67 @@
     const winModal = document.getElementById('winModal');
     const winText = document.getElementById('winText');
     const retryBtn = document.getElementById('retry');
+    const soundBtn = document.getElementById('soundBtn');
 
-    // État
+    // === État ===
     let running = false;
     let gameOver = false;
     let scoreL = 0, scoreR = 0;
+
     // Paddles
-    const left = { x: PADDLE_X_MARGIN, y: HEIGHT/2 - PADDLE_H/2, vx: 0, vy: 0, baseX: PADDLE_X_MARGIN };
-    const right = { x: WIDTH - PADDLE_X_MARGIN - PADDLE_W, y: HEIGHT/2 - PADDLE_H/2, vx: 0, vy: 0, baseX: WIDTH - PADDLE_X_MARGIN - PADDLE_W };
+    const left = { x: PADDLE_X_MARGIN, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
+    const right = { x: WIDTH - PADDLE_X_MARGIN - PADDLE_W, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
+
     // Balle
     const ball = { x: WIDTH/2, y: HEIGHT/2, vx: 0, vy: 0, speed: BALL_SPEED_START };
 
-    // Confettis
+    // Clavier
+    const keys = new Set();
+    window.addEventListener('keydown', e=>{
+      const k = e.key.toLowerCase();
+      if (["arrowup","arrowdown"].includes(k)) e.preventDefault();
+      keys.add(k);
+    }, {passive:false});
+    window.addEventListener('keyup', e=>keys.delete(e.key.toLowerCase()));
+    window.addEventListener('blur', ()=>keys.clear());
+
+    // === Audio rétro simple (WebAudio) ===
+    let audio, audioEnabled = true, audioReady = false;
+    function initAudio(){
+      if (!audioReady){
+        audio = new (window.AudioContext || window.webkitAudioContext)();
+        audioReady = true;
+      }
+    }
+    function beep(freq=440, dur=0.06, type='square', gain=0.05){
+      if (!audioEnabled || !audioReady) return;
+      const t0 = audio.currentTime;
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0+0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t0);
+      o.stop(t0+dur+0.02);
+    }
+    const sfx = {
+      click: ()=>beep(420, 0.08, 'square', 0.05),
+      paddle: ()=>beep(620, 0.04, 'square', 0.05),
+      wall: ()=>beep(280, 0.03, 'square', 0.04),
+      score: ()=>{ beep(220,0.07,'square',0.06); setTimeout(()=>beep(165,0.08,'square',0.06), 40); },
+      win: ()=>{ beep(660,0.09,'square',0.07); setTimeout(()=>beep(880,0.12,'square',0.07), 120); setTimeout(()=>beep(1100,0.15,'square',0.07), 240); },
+    };
+
+    soundBtn.addEventListener('click', ()=>{
+      initAudio(); audioEnabled = !audioEnabled;
+      soundBtn.textContent = audioEnabled ? "🔊 Son: ON" : "🔇 Son: OFF";
+      sfx.click();
+    });
+
+    // === Confettis ===
     let confetti = [];
     function spawnConfetti() {
       confetti = [];
@@ -187,116 +218,123 @@
       }
     }
 
-    function resetRound(toLeft = Math.random()<0.5){
-      ball.x = WIDTH/2; ball.y = HEIGHT/2;
-      // angle initial entre -30° et 30°, vers gauche ou droite
-      const angle = (Math.random()*Math.PI/3 - Math.PI/6);
-      ball.speed = BALL_SPEED_START;
-      ball.vx = (toLeft?-1:1) * Math.cos(angle) * ball.speed;
-      ball.vy = Math.sin(angle) * ball.speed;
-      // replacer légèrement les paddles
-      left.y = clamp(left.y, 0, HEIGHT-PADDLE_H);
-      right.y = clamp(right.y, 0, HEIGHT-PADDLE_H);
+    // === Utils ===
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+    function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
+      return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
     }
 
-    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+    // Nouvelle mise en jeu: balle horizontale, raquettes reset
+    function resetRound(toLeft = Math.random()<0.5){
+      left.y = HEIGHT/2 - PADDLE_H/2;
+      right.y = HEIGHT/2 - PADDLE_H/2;
+      left.vy = 0; right.vy = 0;
+      ball.x = WIDTH/2; ball.y = HEIGHT/2;
+      ball.speed = BALL_SPEED_START;
+      ball.vx = (toLeft ? -1 : 1) * ball.speed;
+      ball.vy = 0; // strictement horizontal
+    }
 
-    // =========================
-    // Entrées clavier
-    // =========================
-    const keys = new Set();
-    window.addEventListener('keydown', e=>{
-      const k = e.key.toLowerCase();
-      // Empêcher le scroll
-      if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) e.preventDefault();
-      keys.add(k);
-    }, {passive:false});
-    window.addEventListener('keyup', e=>{
-      keys.delete(e.key.toLowerCase());
-    });
+    // === Score/HUD ===
+    function updateScore(){
+      scoreEl.textContent = `${scoreL} — ${scoreR}`;
+      scoreEl.classList.remove('flash');
+      // forcer retrigger
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add('flash');
+    }
 
-    // =========================
-    // Boucle de jeu
-    // =========================
+    function endGame(winner){
+      running = false;
+      gameOver = true;
+      winText.textContent = `Joueur ${winner} gagne !`;
+      winModal.style.display = "flex";
+      spawnConfetti();
+      sfx.win();
+    }
+
+    function hardReset(){
+      scoreL = 0; scoreR = 0; updateScore();
+      gameOver = false;
+      winModal.style.display = "none";
+      fctx.clearRect(0,0,WIDTH,HEIGHT);
+      resetRound(Math.random()<0.5);
+    }
+
+    // === Boucle ===
     let last = 0;
     function loop(ts){
       if (!running) { requestAnimationFrame(loop); return; }
       if (!last) last = ts;
-      const dt = Math.min(0.033, (ts-last)/1000); // cap 30 fps step
+      const dt = Math.min(0.033, (ts-last)/1000);
       last = ts;
 
-      update(dt);
-      render();
-
-      requestAnimationFrame(loop);
-    }
-
-    function update(dt){
-      // Déplacements paddles (J1: z/s + q/d) (J2: arrows)
-      // Joueur 1 vertical
+      // Entrées verticales uniquement
       left.vy = 0;
       if (keys.has('z')) left.vy -= PADDLE_SPEED;
       if (keys.has('s')) left.vy += PADDLE_SPEED;
-      // Joueur 1 horizontal limité vers l'intérieur
-      if (keys.has('q')) left.x -= PADDLE_SPEED*dt;
-      if (keys.has('d')) left.x += PADDLE_SPEED*dt;
-      left.x = clamp(left.x, left.baseX - PADDLE_HORIZONTAL_RANGE, left.baseX);
-      left.y = clamp(left.y + left.vy*dt, 0, HEIGHT-PADDLE_H);
-
-      // Joueur 2
       right.vy = 0;
       if (keys.has('arrowup')) right.vy -= PADDLE_SPEED;
       if (keys.has('arrowdown')) right.vy += PADDLE_SPEED;
-      if (keys.has('arrowleft')) right.x -= PADDLE_SPEED*dt;
-      if (keys.has('arrowright')) right.x += PADDLE_SPEED*dt;
-      right.x = clamp(right.x, right.baseX, right.baseX + PADDLE_HORIZONTAL_RANGE);
+
+      left.y = clamp(left.y + left.vy*dt, 0, HEIGHT-PADDLE_H);
       right.y = clamp(right.y + right.vy*dt, 0, HEIGHT-PADDLE_H);
 
       // Balle
-      ball.speed = Math.min(BALL_SPEED_MAX, ball.speed + BALL_ACCEL);
+      // vitesse clamp
       const dir = Math.atan2(ball.vy, ball.vx);
-      ball.vx = Math.cos(dir)*ball.speed;
-      ball.vy = Math.sin(dir)*ball.speed;
+      ball.speed = clamp(ball.speed, 0, BALL_SPEED_MAX);
+      ball.vx = Math.cos(dir) * ball.speed;
+      ball.vy = Math.sin(dir) * ball.speed;
 
       ball.x += ball.vx*dt;
       ball.y += ball.vy*dt;
 
-      // Rebond haut/bas
-      if (ball.y <= 0){ ball.y = 0; ball.vy = Math.abs(ball.vy); }
-      if (ball.y + BALL_SIZE >= HEIGHT){ ball.y = HEIGHT-BALL_SIZE; ball.vy = -Math.abs(ball.vy); }
+      // Mur haut/bas
+      if (ball.y <= 0){ ball.y = 0; ball.vy = Math.abs(ball.vy); sfx.wall(); }
+      if (ball.y + BALL_SIZE >= HEIGHT){ ball.y = HEIGHT-BALL_SIZE; ball.vy = -Math.abs(ball.vy); sfx.wall(); }
 
-      // Collision paddles
+      // Collisions paddles
       const hitLeft = rectsOverlap(ball.x, ball.y, BALL_SIZE, BALL_SIZE, left.x, left.y, PADDLE_W, PADDLE_H);
       const hitRight = rectsOverlap(ball.x, ball.y, BALL_SIZE, BALL_SIZE, right.x, right.y, PADDLE_W, PADDLE_H);
       if (hitLeft){
         ball.x = left.x + PADDLE_W;
-        reflectFromPaddle(left);
+        // angle selon point d'impact
+        const rel = ((ball.y + BALL_SIZE/2) - (left.y + PADDLE_H/2)) / (PADDLE_H/2); // -1..1
+        const maxAngle = Math.PI * 0.35;
+        const angle = rel * maxAngle;
+        ball.speed = Math.min(BALL_SPEED_MAX, Math.abs(ball.vx) * 1.05 + 20);
+        ball.vx = Math.cos(angle) * ball.speed; // vers droite
+        ball.vy = Math.sin(angle) * ball.speed;
+        sfx.paddle();
       } else if (hitRight){
         ball.x = right.x - BALL_SIZE;
-        reflectFromPaddle(right);
+        const rel = ((ball.y + BALL_SIZE/2) - (right.y + PADDLE_H/2)) / (PADDLE_H/2);
+        const maxAngle = Math.PI * 0.35;
+        const angle = rel * maxAngle;
+        ball.speed = Math.min(BALL_SPEED_MAX, Math.abs(ball.vx) * 1.05 + 20);
+        ball.vx = -Math.cos(angle) * ball.speed; // vers gauche
+        ball.vy = Math.sin(angle) * ball.speed;
+        sfx.paddle();
       }
 
       // But
       if (ball.x + BALL_SIZE < 0){
-        scoreR++; updateScore();
+        scoreR++; updateScore(); sfx.score();
         if (scoreR >= POINTS_TO_WIN) endGame(2);
         else resetRound(false);
       } else if (ball.x > WIDTH){
-        scoreL++; updateScore();
+        scoreL++; updateScore(); sfx.score();
         if (scoreL >= POINTS_TO_WIN) endGame(1);
         else resetRound(true);
       }
 
-      // Confettis FX si gameOver
+      // FX confettis
       if (gameOver){
         fctx.clearRect(0,0,WIDTH,HEIGHT);
         for (const c of confetti){
-          c.x += c.vx*dt;
-          c.y += c.vy*dt;
-          c.rot += c.vr*dt;
-          if (c.y > HEIGHT+20) { // recycle
-            c.y = -20; c.x = Math.random()*WIDTH;
-          }
+          c.x += c.vx*dt; c.y += c.vy*dt; c.rot += c.vr*dt;
+          if (c.y > HEIGHT+20){ c.y = -20; c.x = Math.random()*WIDTH; }
           fctx.save();
           fctx.translate(Math.round(c.x), Math.round(c.y));
           fctx.rotate(c.rot);
@@ -307,99 +345,40 @@
       } else {
         fctx.clearRect(0,0,WIDTH,HEIGHT);
       }
-    }
 
-    function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
-      return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
-    }
-
-    function reflectFromPaddle(p){
-      // point d'impact relatif
-      const paddleCenter = p.y + PADDLE_H/2;
-      const hitY = (ball.y + BALL_SIZE/2) - paddleCenter; // -H/2 .. +H/2
-      const norm = hitY / (PADDLE_H/2); // -1..1
-      const maxAngle = Math.PI * 0.35; // ~63°
-      const angle = norm * maxAngle;
-
-      // Dirige vers la droite si on a frappé le paddle gauche, sinon vers la gauche
-      const dirRight = (p === left) ? 1 : -1;
-      const newSpeed = Math.min(BALL_SPEED_MAX, ball.speed * 1.04);
-      ball.vx = dirRight * Math.cos(angle) * newSpeed;
-      ball.vy = Math.sin(angle) * newSpeed;
-
-      // léger bonus si le paddle bouge dans le sens du contact (effet "spin" simplifié)
-      ball.vy += p.vy * 0.15;
+      // Rendu
+      render();
+      requestAnimationFrame(loop);
     }
 
     function render(){
       // fond
       ctx.fillStyle = "#ffd84d";
       ctx.fillRect(0,0,WIDTH,HEIGHT);
-
-      // paddles
-      ctx.fillStyle = "#000000";
+      // paddles + balle
+      ctx.fillStyle = "#000";
       ctx.fillRect(Math.round(left.x), Math.round(left.y), PADDLE_W, PADDLE_H);
       ctx.fillRect(Math.round(right.x), Math.round(right.y), PADDLE_W, PADDLE_H);
-
-      // balle
       ctx.fillRect(Math.round(ball.x), Math.round(ball.y), BALL_SIZE, BALL_SIZE);
     }
 
-    function updateScore(){
-      scoreEl.textContent = `${scoreL} — ${scoreR}`;
-    }
-
-    function endGame(winner){
-      running = false;
-      gameOver = true;
-      winText.textContent = `Joueur ${winner} gagne !`;
-      winModal.style.display = "flex";
-      spawnConfetti();
-    }
-
-    function hardReset(){
-      scoreL = 0; scoreR = 0; updateScore();
-      left.x = left.baseX; right.x = right.baseX;
-      left.y = HEIGHT/2 - PADDLE_H/2;
-      right.y = HEIGHT/2 - PADDLE_H/2;
-      gameOver = false;
-      winModal.style.display = "none";
-      fxCanvas.getContext('2d').clearRect(0,0,WIDTH,HEIGHT);
-      resetRound(Math.random()<0.5);
-    }
-
-    // =========================
-    // UI
-    // =========================
+    // === UI ===
     play5Btn.addEventListener('click', ()=>{
+      initAudio(); sfx.click();
       menu.style.display = "none";
       hardReset();
-      running = true;
-      last = 0;
+      running = true; last = 0;
       requestAnimationFrame(loop);
     });
 
     retryBtn.addEventListener('click', ()=>{
-      hardReset();
-      // Retour menu ou relance directe; ici on relance directe jusqu’à 5.
-      running = true; last = 0; requestAnimationFrame(loop);
+      sfx.click();
+      hardReset(); running = true; last = 0;
+      requestAnimationFrame(loop);
     });
 
-    // Lancer la boucle idle
+    // boucle idle
     requestAnimationFrame(loop);
-
-    // Empêcher répétitions clavier qui scrollent la page
-    window.addEventListener('blur', ()=>keys.clear());
-
-    // Aide: redimensionner canvases au viewport tout en gardant le rendu pixel
-    function resizeCanvases(){
-      // On laisse width/height logiques fixes (800x450) pour physique,
-      // le CSS s’occupe de l’échelle pixelisée.
-      // Rien à faire ici pour la logique; gardé pour extension future.
-    }
-    window.addEventListener('resize', resizeCanvases);
-    resizeCanvases();
   </script>
 </body>
 </html>
-
