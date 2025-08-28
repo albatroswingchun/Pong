@@ -28,29 +28,35 @@
       box-shadow:0 8px 0 var(--black);
       overflow:hidden;
     }
-    canvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
-
-    .hud{
-      position:absolute; left:0; right:0; top:0;
-      display:flex; justify-content:space-between; align-items:center;
-      padding:10px 14px; user-select:none;
-      font-size:min(3.4vw,22px);
-    }
-    .logo{letter-spacing:1px}
-    .score{font-size:1.6em; line-height:1}
-    .score.flash{animation:flash .18s ease-out}
-    @keyframes flash{
-      from{transform:scale(1.15)}
-      to{transform:scale(1)}
-    }
+    canvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; z-index:1; }
 
     .net{
       position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
       background-image:linear-gradient(var(--black) 50%, rgba(0,0,0,0) 50%);
-      background-size:6px 20px; opacity:.25; pointer-events:none;
+      background-size:6px 20px; opacity:.25; pointer-events:none; z-index:2;
     }
 
-    .menu, .modal{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+    .hud{
+      position:absolute; left:0; right:0; top:0; z-index:3;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 14px; user-select:none;
+    }
+    .logo{letter-spacing:1px; font-size:min(3.4vw,22px)}
+    .score{
+      font-size:min(6vw,42px);
+      line-height:1;
+      padding:6px 10px;
+      border:4px solid var(--black);
+      background:var(--yellow);
+      box-shadow:0 6px 0 var(--black);
+    }
+    .score.flash{animation:flash .18s ease-out}
+    @keyframes flash{
+      from{transform:scale(1.12)}
+      to{transform:scale(1)}
+    }
+
+    .menu, .modal{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:4; }
     .card{
       background:var(--yellow); border:4px solid var(--black); box-shadow:0 8px 0 var(--black);
       padding:24px; text-align:center; max-width:min(90%,520px);
@@ -70,14 +76,13 @@
 
     .help{
       position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
-      font-size:min(2.8vw,14px); opacity:.75; text-align:center; line-height:1.5; pointer-events:none;
+      font-size:min(2.8vw,14px); opacity:.75; text-align:center; line-height:1.5; pointer-events:none; z-index:3;
     }
 
-    /* Mute toggle */
     .sound{
       position:absolute; right:10px; bottom:10px; font-size:min(2.8vw,14px);
       border:4px solid var(--black); background:var(--yellow); box-shadow:0 6px 0 var(--black);
-      padding:8px 10px; cursor:pointer;
+      padding:8px 10px; cursor:pointer; z-index:3;
     }
     .sound:active{ transform:translateY(3px); box-shadow:0 3px 0 var(--black); }
   </style>
@@ -89,6 +94,7 @@
         <div class="logo">PONG</div>
         <div class="score" id="score">0 — 0</div>
       </div>
+
       <div class="net" aria-hidden="true"></div>
       <canvas id="game" width="800" height="450"></canvas>
       <canvas id="fx" width="800" height="450" aria-hidden="true"></canvas>
@@ -113,7 +119,7 @@
       </div>
 
       <button class="sound" id="soundBtn">🔊 Son: ON</button>
-      <div class="help">1er à 5 gagne · Fond jaune, pixels noirs. Minimalisme assumé.</div>
+      <div class="help">1er à 5 gagne · Accélération tous les 5 rebonds</div>
     </div>
   </div>
 
@@ -121,11 +127,13 @@
     // === Constantes ===
     const WIDTH = 800, HEIGHT = 450;
     const PADDLE_W = 12, PADDLE_H = 90;
-    const PADDLE_SPEED = 360;
+    const PADDLE_SPEED = 380;
     const PADDLE_X_MARGIN = 20;
     const BALL_SIZE = 10;
-    const BALL_SPEED_START = 340;
-    const BALL_SPEED_MAX = 650;
+    const BALL_SPEED_START = 420;   // plus rapide dès le départ
+    const BALL_SPEED_MAX = 900;     // plafond
+    const SPEED_STEP = 90;          // + vitesse à chaque palier de rebonds
+    const REBOUNDS_PER_STEP = 5;    // accélération tous les 5 rebonds
     const POINTS_TO_WIN = 5;
 
     // === DOM ===
@@ -146,12 +154,25 @@
     let gameOver = false;
     let scoreL = 0, scoreR = 0;
 
-    // Paddles
+    // Paddles (mouvements verticaux uniquement)
     const left = { x: PADDLE_X_MARGIN, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
     const right = { x: WIDTH - PADDLE_X_MARGIN - PADDLE_W, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
 
     // Balle
     const ball = { x: WIDTH/2, y: HEIGHT/2, vx: 0, vy: 0, speed: BALL_SPEED_START };
+
+    // Rebonds
+    let reboundCount = 0;
+    function countReboundAndMaybeSpeedUp(){
+      reboundCount++;
+      if (reboundCount % REBOUNDS_PER_STEP === 0){
+        ball.speed = Math.min(BALL_SPEED_MAX, ball.speed + SPEED_STEP);
+        // recalcule vx/vy avec la nouvelle vitesse sans changer l'angle
+        const ang = Math.atan2(ball.vy, ball.vx);
+        ball.vx = Math.cos(ang) * ball.speed;
+        ball.vy = Math.sin(ang) * ball.speed;
+      }
+    }
 
     // Clavier
     const keys = new Set();
@@ -218,13 +239,13 @@
       }
     }
 
-    // === Utils ===
+    // Utils
     function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
     function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
       return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
     }
 
-    // Nouvelle mise en jeu: balle horizontale, raquettes reset
+    // Nouvelle mise en jeu: horizontale, raquettes recentrées, compteur rebonds remis à zéro
     function resetRound(toLeft = Math.random()<0.5){
       left.y = HEIGHT/2 - PADDLE_H/2;
       right.y = HEIGHT/2 - PADDLE_H/2;
@@ -232,16 +253,14 @@
       ball.x = WIDTH/2; ball.y = HEIGHT/2;
       ball.speed = BALL_SPEED_START;
       ball.vx = (toLeft ? -1 : 1) * ball.speed;
-      ball.vy = 0; // strictement horizontal
+      ball.vy = 0;
+      reboundCount = 0;
     }
 
-    // === Score/HUD ===
+    // Score
     function updateScore(){
       scoreEl.textContent = `${scoreL} — ${scoreR}`;
-      scoreEl.classList.remove('flash');
-      // forcer retrigger
-      void scoreEl.offsetWidth;
-      scoreEl.classList.add('flash');
+      scoreEl.classList.remove('flash'); void scoreEl.offsetWidth; scoreEl.classList.add('flash');
     }
 
     function endGame(winner){
@@ -263,47 +282,61 @@
 
     // === Boucle ===
     let last = 0;
+    const keysDown = new Set();
+    const P1_UP = 'z', P1_DOWN = 's';
+    const P2_UP = 'arrowup', P2_DOWN = 'arrowdown';
+
+    window.addEventListener('keydown', e=>{
+      const k = e.key.toLowerCase();
+      if ([P2_UP,P2_DOWN].includes(k)) e.preventDefault();
+      keysDown.add(k);
+    }, {passive:false});
+    window.addEventListener('keyup', e=>keysDown.delete(e.key.toLowerCase()));
+
     function loop(ts){
       if (!running) { requestAnimationFrame(loop); return; }
       if (!last) last = ts;
       const dt = Math.min(0.033, (ts-last)/1000);
       last = ts;
 
-      // Entrées verticales uniquement
+      // Entrées verticales
       left.vy = 0;
-      if (keys.has('z')) left.vy -= PADDLE_SPEED;
-      if (keys.has('s')) left.vy += PADDLE_SPEED;
+      if (keysDown.has(P1_UP)) left.vy -= PADDLE_SPEED;
+      if (keysDown.has(P1_DOWN)) left.vy += PADDLE_SPEED;
+
       right.vy = 0;
-      if (keys.has('arrowup')) right.vy -= PADDLE_SPEED;
-      if (keys.has('arrowdown')) right.vy += PADDLE_SPEED;
+      if (keysDown.has(P2_UP)) right.vy -= PADDLE_SPEED;
+      if (keysDown.has(P2_DOWN)) right.vy += PADDLE_SPEED;
 
       left.y = clamp(left.y + left.vy*dt, 0, HEIGHT-PADDLE_H);
       right.y = clamp(right.y + right.vy*dt, 0, HEIGHT-PADDLE_H);
 
       // Balle
-      // vitesse clamp
-      const dir = Math.atan2(ball.vy, ball.vx);
-      ball.speed = clamp(ball.speed, 0, BALL_SPEED_MAX);
-      ball.vx = Math.cos(dir) * ball.speed;
-      ball.vy = Math.sin(dir) * ball.speed;
-
       ball.x += ball.vx*dt;
       ball.y += ball.vy*dt;
 
       // Mur haut/bas
-      if (ball.y <= 0){ ball.y = 0; ball.vy = Math.abs(ball.vy); sfx.wall(); }
-      if (ball.y + BALL_SIZE >= HEIGHT){ ball.y = HEIGHT-BALL_SIZE; ball.vy = -Math.abs(ball.vy); sfx.wall(); }
+      if (ball.y <= 0){
+        ball.y = 0; ball.vy = Math.abs(ball.vy);
+        countReboundAndMaybeSpeedUp();
+        sfx.wall();
+      }
+      if (ball.y + BALL_SIZE >= HEIGHT){
+        ball.y = HEIGHT-BALL_SIZE; ball.vy = -Math.abs(ball.vy);
+        countReboundAndMaybeSpeedUp();
+        sfx.wall();
+      }
 
       // Collisions paddles
       const hitLeft = rectsOverlap(ball.x, ball.y, BALL_SIZE, BALL_SIZE, left.x, left.y, PADDLE_W, PADDLE_H);
       const hitRight = rectsOverlap(ball.x, ball.y, BALL_SIZE, BALL_SIZE, right.x, right.y, PADDLE_W, PADDLE_H);
       if (hitLeft){
         ball.x = left.x + PADDLE_W;
-        // angle selon point d'impact
-        const rel = ((ball.y + BALL_SIZE/2) - (left.y + PADDLE_H/2)) / (PADDLE_H/2); // -1..1
+        const rel = ((ball.y + BALL_SIZE/2) - (left.y + PADDLE_H/2)) / (PADDLE_H/2);
         const maxAngle = Math.PI * 0.35;
         const angle = rel * maxAngle;
-        ball.speed = Math.min(BALL_SPEED_MAX, Math.abs(ball.vx) * 1.05 + 20);
+        // applique nouvelle vitesse si palier atteint
+        countReboundAndMaybeSpeedUp();
         ball.vx = Math.cos(angle) * ball.speed; // vers droite
         ball.vy = Math.sin(angle) * ball.speed;
         sfx.paddle();
@@ -312,7 +345,7 @@
         const rel = ((ball.y + BALL_SIZE/2) - (right.y + PADDLE_H/2)) / (PADDLE_H/2);
         const maxAngle = Math.PI * 0.35;
         const angle = rel * maxAngle;
-        ball.speed = Math.min(BALL_SPEED_MAX, Math.abs(ball.vx) * 1.05 + 20);
+        countReboundAndMaybeSpeedUp();
         ball.vx = -Math.cos(angle) * ball.speed; // vers gauche
         ball.vy = Math.sin(angle) * ball.speed;
         sfx.paddle();
@@ -362,7 +395,7 @@
       ctx.fillRect(Math.round(ball.x), Math.round(ball.y), BALL_SIZE, BALL_SIZE);
     }
 
-    // === UI ===
+    // UI
     play5Btn.addEventListener('click', ()=>{
       initAudio(); sfx.click();
       menu.style.display = "none";
