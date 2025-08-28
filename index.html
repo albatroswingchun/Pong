@@ -28,34 +28,37 @@
       box-shadow:0 8px 0 var(--black);
       overflow:hidden;
     }
-    canvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; z-index:1; }
+    canvas{
+      position:absolute; inset:0; width:100%; height:100%;
+      image-rendering:pixelated; image-rendering:crisp-edges;
+    }
 
+    /* Filet pointillé */
     .net{
       position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
       background-image:linear-gradient(var(--black) 50%, rgba(0,0,0,0) 50%);
       background-size:6px 20px; opacity:.25; pointer-events:none; z-index:2;
     }
 
-    .hud{
-      position:absolute; left:0; right:0; top:0; z-index:3;
-      display:flex; justify-content:space-between; align-items:center;
-      padding:10px 14px; user-select:none;
-    }
-    .logo{letter-spacing:1px; font-size:min(3.4vw,22px)}
+    /* Score centré */
     .score{
+      position:absolute; top:8px; left:50%; transform:translateX(-50%);
+      z-index:4;
       font-size:min(6vw,42px);
       line-height:1;
       padding:6px 10px;
       border:4px solid var(--black);
       background:var(--yellow);
       box-shadow:0 6px 0 var(--black);
+      user-select:none;
     }
     .score.flash{animation:flash .18s ease-out}
     @keyframes flash{
-      from{transform:scale(1.12)}
-      to{transform:scale(1)}
+      from{transform:translateX(-50%) scale(1.12)}
+      to{transform:translateX(-50%) scale(1)}
     }
 
+    /* Menus et modals */
     .menu, .modal{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:4; }
     .card{
       background:var(--yellow); border:4px solid var(--black); box-shadow:0 8px 0 var(--black);
@@ -69,10 +72,7 @@
       font-family:"Press Start 2P", system-ui, sans-serif;
     }
     .btn:active{ transform:translateY(3px); box-shadow:0 3px 0 var(--black); }
-
     .modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; }
-    .modal h2{font-size:18px; margin:0 0 16px}
-    .small{font-size:12px; opacity:.8}
 
     .help{
       position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
@@ -82,7 +82,7 @@
     .sound{
       position:absolute; right:10px; bottom:10px; font-size:min(2.8vw,14px);
       border:4px solid var(--black); background:var(--yellow); box-shadow:0 6px 0 var(--black);
-      padding:8px 10px; cursor:pointer; z-index:3;
+      padding:8px 10px; cursor:pointer; z-index:4;
     }
     .sound:active{ transform:translateY(3px); box-shadow:0 3px 0 var(--black); }
   </style>
@@ -90,14 +90,15 @@
 <body>
   <div class="wrap">
     <div class="stage-wrap" id="stage">
-      <div class="hud">
-        <div class="logo">PONG</div>
-        <div class="score" id="score">0 — 0</div>
-      </div>
+      <!-- Score centré -->
+      <div class="score" id="score">0 — 0</div>
 
       <div class="net" aria-hidden="true"></div>
-      <canvas id="game" width="800" height="450"></canvas>
-      <canvas id="fx" width="800" height="450" aria-hidden="true"></canvas>
+
+      <!-- Jeu -->
+      <canvas id="game" width="800" height="450" style="z-index:1"></canvas>
+      <!-- Confettis au-dessus de tout -->
+      <canvas id="fx" width="800" height="450" style="z-index:5; pointer-events:none" aria-hidden="true"></canvas>
 
       <!-- Menu -->
       <div class="menu" id="menu">
@@ -130,10 +131,10 @@
     const PADDLE_SPEED = 380;
     const PADDLE_X_MARGIN = 20;
     const BALL_SIZE = 10;
-    const BALL_SPEED_START = 420;   // plus rapide dès le départ
-    const BALL_SPEED_MAX = 900;     // plafond
-    const SPEED_STEP = 90;          // + vitesse à chaque palier de rebonds
-    const REBOUNDS_PER_STEP = 5;    // accélération tous les 5 rebonds
+    const BALL_SPEED_START = 420;
+    const BALL_SPEED_MAX = 900;
+    const SPEED_STEP = 90;
+    const REBOUNDS_PER_STEP = 5;
     const POINTS_TO_WIN = 5;
 
     // === DOM ===
@@ -154,7 +155,7 @@
     let gameOver = false;
     let scoreL = 0, scoreR = 0;
 
-    // Paddles (mouvements verticaux uniquement)
+    // Paddles (verticaux uniquement)
     const left = { x: PADDLE_X_MARGIN, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
     const right = { x: WIDTH - PADDLE_X_MARGIN - PADDLE_W, y: HEIGHT/2 - PADDLE_H/2, vy: 0 };
 
@@ -167,7 +168,6 @@
       reboundCount++;
       if (reboundCount % REBOUNDS_PER_STEP === 0){
         ball.speed = Math.min(BALL_SPEED_MAX, ball.speed + SPEED_STEP);
-        // recalcule vx/vy avec la nouvelle vitesse sans changer l'angle
         const ang = Math.atan2(ball.vy, ball.vx);
         ball.vx = Math.cos(ang) * ball.speed;
         ball.vy = Math.sin(ang) * ball.speed;
@@ -175,16 +175,16 @@
     }
 
     // Clavier
-    const keys = new Set();
+    const keysDown = new Set();
     window.addEventListener('keydown', e=>{
       const k = e.key.toLowerCase();
       if (["arrowup","arrowdown"].includes(k)) e.preventDefault();
-      keys.add(k);
+      keysDown.add(k);
     }, {passive:false});
-    window.addEventListener('keyup', e=>keys.delete(e.key.toLowerCase()));
-    window.addEventListener('blur', ()=>keys.clear());
+    window.addEventListener('keyup', e=>keysDown.delete(e.key.toLowerCase()));
+    window.addEventListener('blur', ()=>keysDown.clear());
 
-    // === Audio rétro simple (WebAudio) ===
+    // Audio rétro simple (WebAudio)
     let audio, audioEnabled = true, audioReady = false;
     function initAudio(){
       if (!audioReady){
@@ -213,26 +213,25 @@
       score: ()=>{ beep(220,0.07,'square',0.06); setTimeout(()=>beep(165,0.08,'square',0.06), 40); },
       win: ()=>{ beep(660,0.09,'square',0.07); setTimeout(()=>beep(880,0.12,'square',0.07), 120); setTimeout(()=>beep(1100,0.15,'square',0.07), 240); },
     };
-
     soundBtn.addEventListener('click', ()=>{
       initAudio(); audioEnabled = !audioEnabled;
       soundBtn.textContent = audioEnabled ? "🔊 Son: ON" : "🔇 Son: OFF";
       sfx.click();
     });
 
-    // === Confettis ===
+    // Confettis (dessinés sur fxCanvas AU-DESSUS)
     let confetti = [];
     function spawnConfetti() {
       confetti = [];
-      const N = 140;
+      const N = 160;
       for (let i=0;i<N;i++){
         confetti.push({
           x: Math.random()*WIDTH,
           y: -Math.random()*HEIGHT*0.5,
           w: 2+Math.floor(Math.random()*3),
           h: 4+Math.floor(Math.random()*3),
-          vy: 80+Math.random()*220,
-          vx: -60+Math.random()*120,
+          vy: 120+Math.random()*260,
+          vx: -80+Math.random()*160,
           rot: Math.random()*Math.PI*2,
           vr: -4+Math.random()*8,
         });
@@ -245,7 +244,7 @@
       return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
     }
 
-    // Nouvelle mise en jeu: horizontale, raquettes recentrées, compteur rebonds remis à zéro
+    // Nouvelle mise en jeu: horizontale, raquettes reset, rebonds remis à zéro
     function resetRound(toLeft = Math.random()<0.5){
       left.y = HEIGHT/2 - PADDLE_H/2;
       right.y = HEIGHT/2 - PADDLE_H/2;
@@ -280,33 +279,21 @@
       resetRound(Math.random()<0.5);
     }
 
-    // === Boucle ===
+    // Boucle
     let last = 0;
-    const keysDown = new Set();
-    const P1_UP = 'z', P1_DOWN = 's';
-    const P2_UP = 'arrowup', P2_DOWN = 'arrowdown';
-
-    window.addEventListener('keydown', e=>{
-      const k = e.key.toLowerCase();
-      if ([P2_UP,P2_DOWN].includes(k)) e.preventDefault();
-      keysDown.add(k);
-    }, {passive:false});
-    window.addEventListener('keyup', e=>keysDown.delete(e.key.toLowerCase()));
-
     function loop(ts){
       if (!running) { requestAnimationFrame(loop); return; }
       if (!last) last = ts;
       const dt = Math.min(0.033, (ts-last)/1000);
       last = ts;
 
-      // Entrées verticales
+      // Entrées
       left.vy = 0;
-      if (keysDown.has(P1_UP)) left.vy -= PADDLE_SPEED;
-      if (keysDown.has(P1_DOWN)) left.vy += PADDLE_SPEED;
-
+      if (keysDown.has('z')) left.vy -= PADDLE_SPEED;
+      if (keysDown.has('s')) left.vy += PADDLE_SPEED;
       right.vy = 0;
-      if (keysDown.has(P2_UP)) right.vy -= PADDLE_SPEED;
-      if (keysDown.has(P2_DOWN)) right.vy += PADDLE_SPEED;
+      if (keysDown.has('arrowup')) right.vy -= PADDLE_SPEED;
+      if (keysDown.has('arrowdown')) right.vy += PADDLE_SPEED;
 
       left.y = clamp(left.y + left.vy*dt, 0, HEIGHT-PADDLE_H);
       right.y = clamp(right.y + right.vy*dt, 0, HEIGHT-PADDLE_H);
@@ -335,7 +322,6 @@
         const rel = ((ball.y + BALL_SIZE/2) - (left.y + PADDLE_H/2)) / (PADDLE_H/2);
         const maxAngle = Math.PI * 0.35;
         const angle = rel * maxAngle;
-        // applique nouvelle vitesse si palier atteint
         countReboundAndMaybeSpeedUp();
         ball.vx = Math.cos(angle) * ball.speed; // vers droite
         ball.vy = Math.sin(angle) * ball.speed;
@@ -362,9 +348,9 @@
         else resetRound(true);
       }
 
-      // FX confettis
+      // Confettis au-dessus
+      fctx.clearRect(0,0,WIDTH,HEIGHT);
       if (gameOver){
-        fctx.clearRect(0,0,WIDTH,HEIGHT);
         for (const c of confetti){
           c.x += c.vx*dt; c.y += c.vy*dt; c.rot += c.vr*dt;
           if (c.y > HEIGHT+20){ c.y = -20; c.x = Math.random()*WIDTH; }
@@ -375,20 +361,16 @@
           fctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
           fctx.restore();
         }
-      } else {
-        fctx.clearRect(0,0,WIDTH,HEIGHT);
       }
 
-      // Rendu
+      // Rendu jeu
       render();
       requestAnimationFrame(loop);
     }
 
     function render(){
-      // fond
       ctx.fillStyle = "#ffd84d";
       ctx.fillRect(0,0,WIDTH,HEIGHT);
-      // paddles + balle
       ctx.fillStyle = "#000";
       ctx.fillRect(Math.round(left.x), Math.round(left.y), PADDLE_W, PADDLE_H);
       ctx.fillRect(Math.round(right.x), Math.round(right.y), PADDLE_W, PADDLE_H);
@@ -403,14 +385,13 @@
       running = true; last = 0;
       requestAnimationFrame(loop);
     });
-
     retryBtn.addEventListener('click', ()=>{
       sfx.click();
       hardReset(); running = true; last = 0;
       requestAnimationFrame(loop);
     });
 
-    // boucle idle
+    // Démarrage
     requestAnimationFrame(loop);
   </script>
 </body>
